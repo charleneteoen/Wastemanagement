@@ -322,7 +322,7 @@ export default function Dashboard() {
       console.log(data.binsLoad.length, data.binsOverfilled.length, data.adhocTrips.length)
       setBinsLoadData([...data.binsLoad])
       setBinsOverfilledData([...data.binsOverfilled])
-      setAdhocTripsData([...data.adhocTrips])
+      setAdhocTripsData(formatAdhocClearanceDataByDay([...data.adhocTrips]))
       setStatistics(data.statistics)
       setReload(!reload)
     } catch (error) {
@@ -521,10 +521,11 @@ export default function Dashboard() {
           }
         dictDaysOverfilled[day] += adhocData[i].value
     }
+    const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const output = Object.entries(dictDaysOverfilled).map(([day, value]) => ({
-        date: `Day ${day}`,
-        value: value,
-    }))
+      date: daysOfWeek[(parseInt(day) - 1) % 7],
+      value: value,
+    }));
     console.log(output)
     return output
   }
