@@ -277,13 +277,19 @@ export default function Dashboard() {
   }
 
   // Function to save the edited value
-  const saveEdit = () => {
-    if (editingId) {
+  const saveEdit = (inputControl :string) => {
+    if (inputControl === "company") {
+      setInputVariablesCompanyControl(
+        inputVariablesCompanyControl.map((variable) => (variable.id === editingId ? { ...variable, value: tempValue } : variable)),
+      )
+    }
+    else if (inputControl === "component") {
       setinputVariablesComponentControl(
         inputVariablesComponentControl.map((variable) => (variable.id === editingId ? { ...variable, value: tempValue } : variable)),
       )
-      setEditingId(null)
     }
+    
+    setEditingId(null)
   }
 
   // Function to cancel editing
@@ -569,7 +575,7 @@ export default function Dashboard() {
                     variant="ghost"
                     size="sm"
                     className="text-green-400 hover:text-green-300 hover:bg-[#3d3d52]"
-                    onClick={saveEdit}
+                    onClick={() => saveEdit("component")}
                   >
                     <Check className="h-4 w-4" />
                   </Button>
@@ -632,7 +638,7 @@ export default function Dashboard() {
                     variant="ghost"
                     size="sm"
                     className="text-green-400 hover:text-green-300 hover:bg-[#3d3d52]"
-                    onClick={saveEdit}
+                    onClick={() => saveEdit("company")}
                   >
                     <Check className="h-4 w-4" />
                   </Button>
