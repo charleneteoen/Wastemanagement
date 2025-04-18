@@ -877,7 +877,7 @@ export default function Dashboard() {
               <div className="text-3xl font-bold">${outputState.statistics.monthlyAdhocCost.toFixed(2)}</div>
             </Card>
 
-            <Card className="bg-[#2d3e50] border-none text-white p-4">
+            {/* <Card className="bg-[#2d3e50] border-none text-white p-4">
               <div className="flex items-center mb-4">
                 <div className="bg-[#4ecca3] p-2 rounded-full mr-2">
                   <svg
@@ -897,7 +897,7 @@ export default function Dashboard() {
                 <span className="text-sm">Months elapsed</span>
               </div>
               <div className="text-3xl font-bold">{outputState.statistics.monthsElapsed.toFixed(0)}</div>
-            </Card>
+            </Card> */}
 
             <Card className="bg-[#2d3e50] border-none text-white p-4">
               <div className="flex items-center mb-4">
@@ -920,6 +920,9 @@ export default function Dashboard() {
               </div>
               <p className="text-sm text-gray-300">{outputState.statistics.recommendations}</p>
             </Card>
+          </div>
+          <div className="mb-8">
+            Average Garbage Bin Cost Per month is at $500/bin and Recyclable Bin Cost Per month is at $200/bin
           </div>
         </section>
 
