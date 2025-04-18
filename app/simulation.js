@@ -1,9 +1,18 @@
 // const fs = require('fs');
 // Helper Functions
+import seedrandom from 'seedrandom';
+let rng = seedrandom('default-seed'); // Set a default seed
+
+function setSeed(seed) {
+    rng = seedrandom(seed);
+}
+
+
 function getNormalDistributionValue(mean, std_dev) {
+    setSeed('default-seed'); // Reset the seed to default for each call
     let u = 0, v = 0;
-    while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
-    while(v === 0) v = Math.random();
+    while(u === 0) u = rng(); // Use seeded random generator
+    while(v === 0) v = rng();
     let standardNormal = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
     return Math.max(0, Math.floor(mean + standardNormal * std_dev));
 }
