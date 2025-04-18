@@ -11,7 +11,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "VIDACITY - Waste Management Dashboard",
   description: "Optimize your waste management with VIDACITY",
-    generator: 'v0.dev'
 }
 
 interface RootLayoutProps {

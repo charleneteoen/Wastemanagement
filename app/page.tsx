@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Edit, ChevronDown, Check, X, Upload } from "lucide-react"
 import { Card } from "@/components/ui/card"
@@ -11,23 +10,54 @@ import { AreaChart, type DataPoint } from "@/components/area-chart"
 import { ScatterChart, type ScatterDataPoint } from "@/components/scatter-chart"
 import { BarChart, type BarDataPoint } from "@/components/bar-chart"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import Link from "next/link"
+// import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChartDataService, type ChartDataFilter } from "@/services/chart-data-service"
 
-// Define types for our input variables
-interface InputVariable {
-  id: string
-  label: string
-  sublabel?: string
-  value: string
-  icon: React.ReactNode
-  unit?: string
+
+
+// Input Declarations
+interface CombinedInputFormat {
+  foodOps: {
+    dailyLoadGeneral: number;
+    dailyLoadRecycled: number;
+  };
+  office: {
+    dailyLoadGeneral: number;
+    dailyLoadRecycled: number;
+  };
+  others: {
+    dailyLoadGeneral: number;
+    dailyLoadRecycled: number;
+  };
+  companySetting: {
+    costAdhoc: number;
+    regularBinCostMonthlyPerBin: number;
+    recyclableBinCostMonthlyPerBin: number;
+    generalBins: number;
+    recyclableBins: number;
+    garbageTimesClearedPerDay: 1 | 2
+  };
+}
+
+// Output Declarations
+interface OutputVariable {
+  binsLoad : [],
+  binsOverfilled : [],
+  adhocTrips : [],
+  statistics: {
+    averageMonthlyCost: number
+    monthlyAdhocCost: number
+    monthsElapsed: number
+    recommendations: string
+  }
 }
 
 export default function Dashboard() {
-  const [timeRange, setTimeRange] = useState("Last 7 days")
+  const [timeRangeOverfilled, setTimeRangeOverfilled] = useState("Last 1 Year")
+  const [timeRangeAdhoc, setTimeRangeAdhoc] = useState("Next 1 Month")
+  const [timeRangeLoad, setTimeRangeLoad] = useState("Next 1 Month")
   const [selectedCategory, setSelectedCategory] = useState("Food Ops")
 
   // State to track which card is being edited
@@ -39,8 +69,11 @@ export default function Dashboard() {
   const [adhocTripsData, setAdhocTripsData] = useState<BarDataPoint[]>([])
   const [isLoadingCharts, setIsLoadingCharts] = useState(true)
 
+  // For Mocking Data
+  const simulationOutputPath = '../simulation_output.json';
+
   // State for input variables
-  const [inputVariables, setInputVariables] = useState<InputVariable[]>([
+  const [inputVariablesComponentControl, setinputVariablesComponentControl] = useState([
     {
       id: "dailyLoadGeneral",
       label: "Daily Approx Load",
@@ -132,6 +165,40 @@ export default function Dashboard() {
     },
   ])
 
+  const [combinedInputValues, setCombinedInputValues] = useState<CombinedInputFormat>({
+    foodOps: {
+      dailyLoadGeneral: 0,
+      dailyLoadRecycled: 0,
+    },
+    office: {
+      dailyLoadGeneral: 0,
+      dailyLoadRecycled: 0,
+    },
+    others: {
+      dailyLoadGeneral: 0,
+      dailyLoadRecycled: 0,
+    },
+    companySetting: {
+      costAdhoc: 0,
+      regularBinCostMonthlyPerBin: 0,
+      recyclableBinCostMonthlyPerBin: 0,
+      generalBins: 0,
+      recyclableBins: 0,
+      garbageTimesClearedPerDay: 1,
+    },
+  })
+  const [outputState, setOutputState] = useState<OutputVariable>({
+    binsLoad: [],
+    binsOverfilled: [],
+    adhocTrips: [],
+    statistics: {
+      averageMonthlyCost: 0,
+      monthlyAdhocCost: 0,
+      monthsElapsed: 0,
+      recommendations: "Generate a report to see more details",
+    },
+  })
+
   // Temporary state for editing
   const [tempValue, setTempValue] = useState("")
 
@@ -144,8 +211,8 @@ export default function Dashboard() {
   // Function to save the edited value
   const saveEdit = () => {
     if (editingId) {
-      setInputVariables(
-        inputVariables.map((variable) => (variable.id === editingId ? { ...variable, value: tempValue } : variable)),
+      setinputVariablesComponentControl(
+        inputVariablesComponentControl.map((variable) => (variable.id === editingId ? { ...variable, value: tempValue } : variable)),
       )
       setEditingId(null)
     }
@@ -167,6 +234,7 @@ export default function Dashboard() {
   // Function to load chart data
   const loadChartData = async () => {
     setIsLoadingCharts(true)
+    const timeRange = 'Default';
 
     try {
       const filter: ChartDataFilter = {
@@ -191,7 +259,22 @@ export default function Dashboard() {
   // Load chart data when timeRange or selectedCategory changes
   useEffect(() => {
     loadChartData()
-  }, [timeRange, selectedCategory])
+    const fetchSimulationData = async () => {
+      try {
+        const response = await fetch(simulationOutputPath);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Simulation Output Data:", data);
+        setOutputState(data);
+      } catch (error) {
+        console.error('Error fetching simulation_output.json:', error);
+      }
+    };
+  
+    fetchSimulationData();
+  }, [timeRangeAdhoc,timeRangeLoad,timeRangeOverfilled, selectedCategory])
 
   return (
     <div className="flex h-screen bg-[#1a1a2e] overflow-hidden">
@@ -248,23 +331,28 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
+      {/* End Sidebar */}
 
       {/* Main content */}
       <div className="flex-1 p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
           <div className="flex items-center">
-            <Link href="/excel-template" className="mr-4">
+            {/* TODO: Disable Excel Template */}
+            {/* <Link href="/excel-template" className="mr-4">
               <Button variant="outline" className="bg-[#2d2d42] border-[#3d3d52] text-white">
                 <Upload className="mr-2 h-4 w-4" />
                 Excel Template
               </Button>
-            </Link>
+            </Link> */}
+
             <Avatar className="h-10 w-10 border-2 border-[#4ecca3]">
               <AvatarImage src="/placeholder-user.jpg" alt="Jerrick" />
               <AvatarFallback className="bg-[#2d2d42] text-white">JR</AvatarFallback>
             </Avatar>
-            <DropdownMenu>
+
+            {/* Disable Drop Down */}
+            {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="ml-2 text-white">
                   Jerrick
@@ -276,7 +364,9 @@ export default function Dashboard() {
                 <DropdownMenuItem className="hover:bg-[#3d3d52]">Settings</DropdownMenuItem>
                 <DropdownMenuItem className="hover:bg-[#3d3d52]">Logout</DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu> */}
+            {/* Just show Jerrick's Name */}
+            <div className="ml-2 pr-4 text-white">Jerrick</div>
           </div>
         </header>
 
@@ -284,6 +374,7 @@ export default function Dashboard() {
           <h2 className="text-xl font-semibold text-white mb-4">Input Variables</h2>
 
           {/* Custom Tenant Category Dropdown */}
+          {/* Sets Selected Category to change the input load but cost per adhoc is the same */}
           <div className="mb-6">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -346,7 +437,7 @@ export default function Dashboard() {
           <div className="relative">
             <ScrollArea className="w-full pb-4">
               <div className="flex space-x-4 pb-2">
-                {inputVariables.map((variable) => (
+                {inputVariablesComponentControl.map((variable) => (
                   <Card
                     key={variable.id}
                     className="bg-[#2d2d42] border-none text-white p-6 relative w-[240px] h-[100px] flex items-center"
@@ -360,6 +451,7 @@ export default function Dashboard() {
                       <Edit className="h-4 w-4" />
                     </Button>
 
+                    {/* Editing Widget */}
                     {editingId === variable.id ? (
                       <div className="flex items-center w-full">
                         <Input
@@ -388,6 +480,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     ) : (
+                      // Display Static Variable After Editing
                       <div className="flex items-center w-full">
                         <div className="bg-[#3d3d52] p-2 rounded-md mr-3">{variable.icon}</div>
                         <div className="flex flex-col">
@@ -411,6 +504,8 @@ export default function Dashboard() {
         </section>
 
         <section>
+          {/* Statistics Section */}
+          {/* Connected */}
           <h2 className="text-xl font-semibold text-white mb-4">Statistics</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <Card className="bg-[#2d3e50] border-none text-white p-4">
@@ -432,7 +527,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm">Average Monthly Cost</span>
               </div>
-              <div className="text-3xl font-bold">${statistics.averageMonthlyCost}</div>
+              <div className="text-3xl font-bold">${outputState.statistics.averageMonthlyCost.toFixed(2)}</div>
             </Card>
 
             <Card className="bg-[#2d3e50] border-none text-white p-4">
@@ -454,7 +549,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm">Monthly Ad-hoc Cost</span>
               </div>
-              <div className="text-3xl font-bold">${statistics.monthlyAdhocCost}</div>
+              <div className="text-3xl font-bold">${outputState.statistics.monthlyAdhocCost.toFixed(2)}</div>
             </Card>
 
             <Card className="bg-[#2d3e50] border-none text-white p-4">
@@ -476,7 +571,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm">Months elapsed</span>
               </div>
-              <div className="text-3xl font-bold">{statistics.monthsElapsed}</div>
+              <div className="text-3xl font-bold">{outputState.statistics.monthsElapsed.toFixed(0)}</div>
             </Card>
 
             <Card className="bg-[#2d3e50] border-none text-white p-4">
@@ -498,12 +593,13 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm">Recommendations</span>
               </div>
-              <p className="text-sm text-gray-300">{statistics.recommendations}</p>
+              <p className="text-sm text-gray-300">{outputState.statistics.recommendations}</p>
             </Card>
           </div>
         </section>
 
         <section className="mb-8">
+          {/* Graph Section */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-white">Load of Bins</h2>
             <div className="flex items-center space-x-4">
@@ -518,24 +614,28 @@ export default function Dashboard() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="bg-[#2d2d42] border-[#3d3d52] text-white">
-                    {timeRange}
+                    {timeRangeLoad}
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#2d2d42] text-white border-[#3d3d52]">
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 7 days")}>
-                    Last 7 days
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeLoad("Next 1 Month")}>
+                    Next 1 Month
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 30 days")}>
-                    Last 30 days
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeLoad("Next 3 Months")}>
+                    Next 3 Months
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 90 days")}>
-                    Last 90 days
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeLoad("Next 6 Months")}>
+                    Next 6 Months
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeLoad("Next 1 Year")}>
+                    Next 1 Year
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
+          {/* Graphs for Bins Load */}
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
             <div className="relative h-64">
               {isLoadingCharts ? (
@@ -559,22 +659,33 @@ export default function Dashboard() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-white">No. of overfilled bins</h2>
             <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-[#4ecca3] mr-2"></div>
+                  <span className="text-sm text-gray-300">General</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-[#eeff41] mr-2"></div>
+                  <span className="text-sm text-gray-300">Recyclable</span>
+                </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="bg-[#2d2d42] border-[#3d3d52] text-white">
-                    {timeRange}
+                    {timeRangeOverfilled}
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#2d2d42] text-white border-[#3d3d52]">
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 7 days")}>
-                    Last 7 days
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeOverfilled("Next 1 Month")}>
+                    Next 1 Month
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 30 days")}>
-                    Last 30 days
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeOverfilled("Next 3 Months")}>
+                    Next 3 Months
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 90 days")}>
-                    Last 90 days
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeOverfilled("Next 6 Months")}>
+                    Next 6 Months
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeOverfilled("Next 1 Year")}>
+                    Next 1 Year
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -606,19 +717,22 @@ export default function Dashboard() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="bg-[#2d2d42] border-[#3d3d52] text-white">
-                    {timeRange}
+                    {timeRangeAdhoc}
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#2d2d42] text-white border-[#3d3d52]">
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 7 days")}>
-                    Last 7 days
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 30 days")}>
-                    Last 30 days
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRange("Last 90 days")}>
-                    Last 90 days
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeAdhoc("Next 1 Month")}>
+                      Next 1 Month
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeAdhoc("Next 3 Months")}>
+                      Next 3 Months
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeAdhoc("Next 6 Months")}>
+                      Next 6 Months
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeAdhoc("Next 1 Year")}>
+                      Next 1 Year
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

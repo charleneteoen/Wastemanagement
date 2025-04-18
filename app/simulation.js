@@ -34,8 +34,8 @@ function computeMonthlyAdhocCost(state) {
 function getBinsLoad(state) {
     // Get the bins load based on the state and combined input format
     const binsLoad = {
-        general: state.CurrentTotalVolumeGarbage / 660,
-        recyclable: state.CurrentTotalVolumeRecyclable/ 660
+        general: state.CurrentMaximalLoadInDay / 660,
+        recyclable: state.CurrentMaximalLoadInDayRecyclable/ 660
     };
     return binsLoad;
 }
@@ -47,6 +47,8 @@ function runOneIter(state, combinedInputFormat, sim_time, interThrowCounter) {
     const garbageCollectionOffsetStartTime = 18; 
     const overflowThresholdRatio = 1.2; // 20% overflow threshold
 
+    
+
 
     // Frequency of throwing garbage in bins (in hours) by default
     let interThrowInterval = [24]; 
@@ -56,6 +58,8 @@ function runOneIter(state, combinedInputFormat, sim_time, interThrowCounter) {
         // If the times cleared is 2 then it is cleared at 1500 and at 2100 which is 6 hours gap then followed by a 18 hours gap
         interThrowInterval=[6,18]
     }
+
+    
 
 
     // Step 1a Accumulate Garbage Every day 
@@ -86,12 +90,29 @@ function runOneIter(state, combinedInputFormat, sim_time, interThrowCounter) {
         state.RecyclableBinsOverfilled += 1;
     }
 
+    // Maximal Load Tracking
+    if ((sim_time - 1) % 24 === 0) {
+        // Reset the maximal load every day after the tracker is updated
+        state.CurrentMaximalLoadInDay = 0;
+    }
+    else {
+        // Update the maximal load in a day
+        state.CurrentMaximalLoadInDay = Math.max(state.CurrentMaximalLoadInDay, state.CurrentTotalVolumeGarbage);
+    }
+    if ((sim_time - 1) % (24*7) === 0) {
+        // Reset the maximal load every week after the tracker is updated
+        state.CurrentMaximalLoadInDayRecyclable = 0;
+    }
+    else {
+        // Update the maximal load in a week
+        state.CurrentMaximalLoadInDayRecyclable = Math.max(state.CurrentMaximalLoadInDayRecyclable, state.CurrentTotalVolumeRecyclable);
+    }
 
     // Step 2A: Regular Clear Every Day for Garbage based on intervals
     // Doesn't use the interthrowcounter as it is not needed for 1 interval
     if (interThrowInterval.length === 1) {
         // Clear if time met
-        if ((sim_time + garbageCollectionOffsetStartTime) % interThrowInterval[0] === 0) {
+        if ((sim_time - garbageCollectionOffsetStartTime) % interThrowInterval[0] === 0) {
             state.CurrentTotalVolumeGarbage = 0;
 
         }
@@ -308,6 +329,8 @@ function generateResult(combinedInputFormat, logging = false) {
         TotalCostAdhocRecyclable: 0,
         GarbageAdhocTriggerDelay: 0,
         RecyclableAdhocTriggerDelay: 0,
+        CurrentMaximalLoadInDay: 0,
+        CurrentMaximalLoadInDayRecyclable: 0,
     };
     // Simulation Parameters
     const cutTime = 24 * 365; 

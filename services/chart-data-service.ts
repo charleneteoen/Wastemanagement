@@ -31,21 +31,44 @@ export interface ChartDataFilter {
 /**
  * Service for fetching and managing chart data
  */
+
+
+// currently using mock data for development and testing
 export class ChartDataService {
   /**
    * Fetch chart data based on filter options
    */
   static async fetchChartData(filter: ChartDataFilter): Promise<ChartDataResponse> {
-    // In a real application, this would be an API call
-    // For now, we'll simulate it with a Promise
+    const simulationOutputPath = '../simulation_output.json';
 
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Generate data based on the filter
-        const data = this.generateMockData(filter)
-        resolve(data)
-      }, 500) // Simulate network delay
-    })
+    try {
+      const response = await fetch(simulationOutputPath);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Simulation Output Data:", data);
+
+      // Map the data from simulation_output.json to the ChartDataResponse format
+      const chartData: ChartDataResponse = {
+        binsLoad: data.binsLoad || [],
+        binsOverfilled: data.binsOverfilled || [],
+        adhocTrips: data.adhocTrips || [],
+        statistics: {
+          averageMonthlyCost: data.statistics?.averageMonthlyCost || 0,
+          monthlyAdhocCost: data.statistics?.monthlyAdhocCost || 0,
+          monthsElapsed: data.statistics?.monthsElapsed || 0,
+          recommendations: data.statistics?.recommendations || "",
+        },
+      };
+
+      return chartData;
+    } catch (error) {
+      console.error('Error fetching simulation_output.json:', error);
+
+      // Fallback to mock data in case of an error
+      return this.generateMockData(filter);
+    }
   }
 
   /**
