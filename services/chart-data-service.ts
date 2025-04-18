@@ -22,10 +22,7 @@ export interface ChartDataResponse {
  * Interface for chart data filter options
  */
 export interface ChartDataFilter {
-  timeRange: string
-  tenantCategory?: string
-  startDate?: string
-  endDate?: string
+  days: number
 }
 
 /**
@@ -38,37 +35,34 @@ export class ChartDataService {
   /**
    * Fetch chart data based on filter options
    */
-  static async fetchChartData(filter: ChartDataFilter): Promise<ChartDataResponse> {
-    const simulationOutputPath = '../simulation_output.json';
+  static async fetchChartData(filter: ChartDataFilter, output : any): Promise<ChartDataResponse> {
+    // const simulationOutputPath = '../simulation_output.json';
 
-    try {
-      const response = await fetch(simulationOutputPath);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log("Simulation Output Data:", data);
+    // try {
+    //   const response = await fetch(simulationOutputPath);
+    //   if (!response.ok) {
+    //     throw new Error(`HTTP error! status: ${response.status}`);
+    //   }
+    //   const data = await response.json();
+    //   console.log("Simulation Output Data:", data);
 
-      // Map the data from simulation_output.json to the ChartDataResponse format
-      const chartData: ChartDataResponse = {
-        binsLoad: data.binsLoad || [],
-        binsOverfilled: data.binsOverfilled || [],
-        adhocTrips: data.adhocTrips || [],
-        statistics: {
-          averageMonthlyCost: data.statistics?.averageMonthlyCost || 0,
-          monthlyAdhocCost: data.statistics?.monthlyAdhocCost || 0,
-          monthsElapsed: data.statistics?.monthsElapsed || 0,
-          recommendations: data.statistics?.recommendations || "",
-        },
-      };
-
-      return chartData;
-    } catch (error) {
-      console.error('Error fetching simulation_output.json:', error);
-
-      // Fallback to mock data in case of an error
-      return this.generateMockData(filter);
-    }
+    //   // Map the data from simulation_output.json to the ChartDataResponse format
+    //   const chartData: ChartDataResponse = {
+    //     binsLoad: data.binsLoad || [],
+    //     binsOverfilled: data.binsOverfilled || [],
+    //     adhocTrips: data.adhocTrips || [],
+    //     statistics: {
+    //       averageMonthlyCost: data.statistics?.averageMonthlyCost || 0,
+    //       monthlyAdhocCost: data.statistics?.monthlyAdhocCost || 0,
+    //       monthsElapsed: data.statistics?.monthsElapsed || 0,
+    //       recommendations: data.statistics?.recommendations || "",
+    //     },
+    //   };
+    const days = filter.days;
+    output.binsLoad = output.binsLoad.slice(0, days);
+    output.binsOverfilled = output.binsOverfilled.slice(0, days);
+    output.adhocTrips = output.adhocTrips.slice(0, days);
+    return output;
   }
 
   /**

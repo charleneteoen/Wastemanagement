@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { Edit, ChevronDown, Check, X, Upload } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,8 +12,8 @@ import { BarChart, type BarDataPoint } from "@/components/bar-chart"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 // import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChartDataService, type ChartDataFilter } from "@/services/chart-data-service"
+import { generateResult } from "./simulation"
 
 
 
@@ -43,9 +43,9 @@ interface CombinedInputFormat {
 
 // Output Declarations
 interface OutputVariable {
-  binsLoad : [],
-  binsOverfilled : [],
-  adhocTrips : [],
+  binsLoad : never[],
+  binsOverfilled : never[],
+  adhocTrips : never[],
   statistics: {
     averageMonthlyCost: number
     monthlyAdhocCost: number
@@ -58,7 +58,6 @@ export default function Dashboard() {
   const [timeRangeOverfilled, setTimeRangeOverfilled] = useState("Last 1 Year")
   const [timeRangeAdhoc, setTimeRangeAdhoc] = useState("Next 1 Month")
   const [timeRangeLoad, setTimeRangeLoad] = useState("Next 1 Month")
-  const [selectedCategory, setSelectedCategory] = useState("Food Ops")
 
   // State to track which card is being edited
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -68,17 +67,52 @@ export default function Dashboard() {
   const [binsOverfilledData, setBinsOverfilledData] = useState<ScatterDataPoint[]>([])
   const [adhocTripsData, setAdhocTripsData] = useState<BarDataPoint[]>([])
   const [isLoadingCharts, setIsLoadingCharts] = useState(true)
+  const [filterDaysOverfilled, setFilterDaysOverfilled] = useState(30)
+  const [filterDaysAdhoc, setFilterDaysAdhoc] = useState(30)
+  const [filterDaysLoad, setFilterDaysLoad] = useState(30)
+  const [reload, setReload] = useState(false)
+  const [combinedInputValues, setCombinedInputValues] = useState<CombinedInputFormat>({
+    foodOps: {
+      dailyLoadGeneral: 0,
+      dailyLoadRecycled: 0,
+    },
+    office: {
+      dailyLoadGeneral: 0,
+      dailyLoadRecycled: 0,
+    },
+    others: {
+      dailyLoadGeneral: 0,
+      dailyLoadRecycled: 0,
+    },
+    companySetting: {
+      costAdhoc: 0,
+      regularBinCostMonthlyPerBin: 0,
+      recyclableBinCostMonthlyPerBin: 0,
+      generalBins: 0,
+      recyclableBins: 0,
+      garbageTimesClearedPerDay: 1,
+    },
+  })
+  const [outputState, setOutputState] = useState<OutputVariable>({
+    binsLoad: [],
+    binsOverfilled: [],
+    adhocTrips: [],
+    statistics: {
+      averageMonthlyCost: 0,
+      monthlyAdhocCost: 0,
+      monthsElapsed: 0,
+      recommendations: "Generate a report to see more details",
+    },
+  })
 
-  // For Mocking Data
-  const simulationOutputPath = '../simulation_output.json';
 
   // State for input variables
   const [inputVariablesComponentControl, setinputVariablesComponentControl] = useState([
     {
-      id: "dailyLoadGeneral",
-      label: "Daily Approx Load",
+      id: "dailyLoadGeneralFoodOps",
+      label: "Food Ops Daily Approx Load",
       sublabel: "(General)",
-      value: "1200",
+      value: "500",
       unit: "L",
       icon: (
         <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -91,10 +125,10 @@ export default function Dashboard() {
       ),
     },
     {
-      id: "dailyLoadRecycled",
-      label: "Daily Approx Load",
+      id: "dailyLoadRecycledFoodOps",
+      label: "Food Ops Daily Approx Load",
       sublabel: "(Recycled)",
-      value: "120",
+      value: "20",
       unit: "L",
       icon: (
         <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -106,11 +140,78 @@ export default function Dashboard() {
         </svg>
       ),
     },
+    {
+      id: "dailyLoadGeneralRegular",
+      label: "Regular Daily Approx Load",
+      sublabel: "(General)",
+      value: "500",
+      unit: "L",
+      icon: (
+        <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: "dailyLoadRecycledRegular",
+      label: "Regular Daily Approx Load",
+      sublabel: "(Recycled)",
+      value: "20",
+      unit: "L",
+      icon: (
+        <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: "dailyLoadGeneralOthers",
+      label: "Others Daily Approx Load",
+      sublabel: "(General)",
+      value: "300",
+      unit: "L",
+      icon: (
+        <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: "dailyLoadRecycledOthers",
+      label: "Others Daily Approx Load",
+      sublabel: "(Recycled)",
+      value: "20",
+      unit: "L",
+      icon: (
+        <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+          />
+        </svg>
+      ),
+    },
+  ])
+
+  const [inputVariablesCompanyControl, setInputVariablesCompanyControl] = useState([
     {
       id: "costAdhoc",
       label: "Cost Per Adhoc",
       sublabel: "Waste Collection",
-      value: "120",
+      value: "100",
       unit: "$",
       icon: (
         <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -162,42 +263,9 @@ export default function Dashboard() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-    },
-  ])
+    },])
 
-  const [combinedInputValues, setCombinedInputValues] = useState<CombinedInputFormat>({
-    foodOps: {
-      dailyLoadGeneral: 0,
-      dailyLoadRecycled: 0,
-    },
-    office: {
-      dailyLoadGeneral: 0,
-      dailyLoadRecycled: 0,
-    },
-    others: {
-      dailyLoadGeneral: 0,
-      dailyLoadRecycled: 0,
-    },
-    companySetting: {
-      costAdhoc: 0,
-      regularBinCostMonthlyPerBin: 0,
-      recyclableBinCostMonthlyPerBin: 0,
-      generalBins: 0,
-      recyclableBins: 0,
-      garbageTimesClearedPerDay: 1,
-    },
-  })
-  const [outputState, setOutputState] = useState<OutputVariable>({
-    binsLoad: [],
-    binsOverfilled: [],
-    adhocTrips: [],
-    statistics: {
-      averageMonthlyCost: 0,
-      monthlyAdhocCost: 0,
-      monthsElapsed: 0,
-      recommendations: "Generate a report to see more details",
-    },
-  })
+  
 
   // Temporary state for editing
   const [tempValue, setTempValue] = useState("")
@@ -232,22 +300,22 @@ export default function Dashboard() {
   })
 
   // Function to load chart data
-  const loadChartData = async () => {
+  const loadChartData = async (chartdata:any) => {
     setIsLoadingCharts(true)
-    const timeRange = 'Default';
+    console.log(filterDaysAdhoc, filterDaysLoad, filterDaysOverfilled)
 
     try {
       const filter: ChartDataFilter = {
-        timeRange,
-        tenantCategory: selectedCategory,
+        days: filterDaysLoad,
       }
 
-      const data = await ChartDataService.fetchChartData(filter)
+      const data = await ChartDataService.fetchChartData(filter, chartdata)
 
       setBinsLoadData(data.binsLoad)
       setBinsOverfilledData(data.binsOverfilled)
       setAdhocTripsData(data.adhocTrips)
       setStatistics(data.statistics)
+      setReload(!reload)
     } catch (error) {
       console.error("Error loading chart data:", error)
       // In a real app, you would show an error message to the user
@@ -258,23 +326,61 @@ export default function Dashboard() {
 
   // Load chart data when timeRange or selectedCategory changes
   useEffect(() => {
-    loadChartData()
-    const fetchSimulationData = async () => {
-      try {
-        const response = await fetch(simulationOutputPath);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("Simulation Output Data:", data);
-        setOutputState(data);
-      } catch (error) {
-        console.error('Error fetching simulation_output.json:', error);
-      }
-    };
-  
-    fetchSimulationData();
-  }, [timeRangeAdhoc,timeRangeLoad,timeRangeOverfilled, selectedCategory])
+    loadChartData(outputState);
+    }, [timeRangeAdhoc,timeRangeLoad,timeRangeOverfilled])
+
+  function generateReport() {
+    // Grabs values for input variables from component dicts
+    const foodOpsDailyLoadGeneral = parseFloat(inputVariablesComponentControl[0].value)
+    const foodOpsDailyLoadRecycled = parseFloat(inputVariablesComponentControl[1].value)
+    const regularDailyLoadGeneral = parseFloat(inputVariablesComponentControl[2].value)
+    const regularDailyLoadRecycled = parseFloat(inputVariablesComponentControl[3].value)
+    const othersDailyLoadGeneral = parseFloat(inputVariablesComponentControl[4].value)
+    const othersDailyLoadRecycled = parseFloat(inputVariablesComponentControl[5].value)
+    const costAdhoc = parseFloat(inputVariablesCompanyControl[0].value)
+    const generalBins = parseFloat(inputVariablesCompanyControl[1].value)
+    const recyclableBins = parseFloat(inputVariablesCompanyControl[2].value)
+    const timesClearedPerDay = parseFloat(inputVariablesCompanyControl[3].value)
+    const combinedInputsLocal = {
+      foodOps: {
+        dailyLoadGeneral: foodOpsDailyLoadGeneral,
+        dailyLoadRecycled: foodOpsDailyLoadRecycled,
+      },
+      office: {
+        dailyLoadGeneral: regularDailyLoadGeneral,
+        dailyLoadRecycled: regularDailyLoadRecycled,
+      },
+      others: {
+        dailyLoadGeneral: othersDailyLoadGeneral,
+        dailyLoadRecycled: othersDailyLoadRecycled,
+      },
+      companySetting: {
+        costAdhoc,
+        regularBinCostMonthlyPerBin: 500,
+        recyclableBinCostMonthlyPerBin: 200,
+        generalBins,
+        recyclableBins,
+        garbageTimesClearedPerDay: timesClearedPerDay as 1 | 2,
+      },
+    }
+    setCombinedInputValues(combinedInputsLocal);
+    const result: OutputVariable = {
+      ...generateResult(combinedInputsLocal),
+      statistics: {
+        averageMonthlyCost: 0,
+        monthlyAdhocCost: 0,
+        monthsElapsed: 0,
+        recommendations: "No recommendations available",
+        ...generateResult(combinedInputsLocal).statistics,
+      },
+    }
+    setOutputState(result)
+    loadChartData(result)
+  };
+
+  useEffect(() => {
+    loadChartData(outputState)
+  }, [filterDaysAdhoc,filterDaysLoad,filterDaysOverfilled])
 
   return (
     <div className="flex h-screen bg-[#1a1a2e] overflow-hidden">
@@ -372,10 +478,9 @@ export default function Dashboard() {
 
         <section className="mb-8">
           <h2 className="text-xl font-semibold text-white mb-4">Input Variables</h2>
-
           {/* Custom Tenant Category Dropdown */}
           {/* Sets Selected Category to change the input load but cost per adhoc is the same */}
-          <div className="mb-6">
+          {/* <div className="mb-6">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -431,75 +536,146 @@ export default function Dashboard() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          </div> */}
 
           {/* Scrollable Input Variables */}
           <div className="relative">
-            <ScrollArea className="w-full pb-4">
-              <div className="flex space-x-4 pb-2">
-                {inputVariablesComponentControl.map((variable) => (
-                  <Card
-                    key={variable.id}
-                    className="bg-[#2d2d42] border-none text-white p-6 relative w-[240px] h-[100px] flex items-center"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute top-2 right-2 text-gray-400 hover:text-white"
-                      onClick={() => startEditing(variable.id, variable.value)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {inputVariablesComponentControl.map((variable) => (
+              <Card
+                key={variable.id}
+                className="bg-[#2d2d42] border-none text-white p-6 relative flex items-center"
+              >
+                <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 text-gray-400 hover:text-white"
+                onClick={() => startEditing(variable.id, variable.value)}
+                >
+                <Edit className="h-4 w-4" />
+                </Button>
 
-                    {/* Editing Widget */}
-                    {editingId === variable.id ? (
-                      <div className="flex items-center w-full">
-                        <Input
-                          value={tempValue}
-                          onChange={(e) => setTempValue(e.target.value)}
-                          className="bg-[#3d3d52] border-[#4d4d62] text-white h-8"
-                          autoFocus
-                        />
-                        <div className="absolute top-2 right-2 flex space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-green-400 hover:text-green-300 hover:bg-[#3d3d52]"
-                            onClick={saveEdit}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-400 hover:text-red-300 hover:bg-[#3d3d52]"
-                            onClick={cancelEdit}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      // Display Static Variable After Editing
-                      <div className="flex items-center w-full">
-                        <div className="bg-[#3d3d52] p-2 rounded-md mr-3">{variable.icon}</div>
-                        <div className="flex flex-col">
-                          <div className="text-sm text-gray-400">{variable.label}</div>
-                          {variable.sublabel && <div className="text-sm text-gray-400">{variable.sublabel}</div>}
-                          <div className="text-2xl font-bold mt-1">
-                            {variable.unit && variable.unit !== "$"
-                              ? `${variable.value} ${variable.unit}`
-                              : variable.unit === "$"
-                                ? `${variable.unit}${variable.value}`
-                                : variable.value}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
+                {/* Editing Widget */}
+                {editingId === variable.id ? (
+                <div className="flex items-center w-full">
+                  <Input
+                  value={tempValue}
+                  onChange={(e) => setTempValue(e.target.value)}
+                  className="bg-[#3d3d52] border-[#4d4d62] text-white h-8"
+                  autoFocus
+                  />
+                  <div className="absolute top-2 right-2 flex space-x-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-green-400 hover:text-green-300 hover:bg-[#3d3d52]"
+                    onClick={saveEdit}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-400 hover:text-red-300 hover:bg-[#3d3d52]"
+                    onClick={cancelEdit}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  </div>
+                </div>
+                ) : (
+                // Display Static Variable After Editing
+                <div className="flex items-center w-full">
+                  <div className="bg-[#3d3d52] p-2 rounded-md mr-3">{variable.icon}</div>
+                  <div className="flex flex-col">
+                  <div className="text-sm text-gray-400">{variable.label}</div>
+                  {variable.sublabel && <div className="text-sm text-gray-400">{variable.sublabel}</div>}
+                  <div className="text-2xl font-bold mt-1">
+                    {variable.unit && variable.unit !== "$"
+                    ? `${variable.value} ${variable.unit}`
+                    : variable.unit === "$"
+                      ? `${variable.unit}${variable.value}`
+                      : variable.value}
+                  </div>
+                  </div>
+                </div>
+                )}
+              </Card>
+              ))}
+            </div>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {inputVariablesCompanyControl.map((variable) => (
+              <Card
+                key={variable.id}
+                className="bg-[#2d2d42] border-none text-white p-6 relative flex items-center"
+              >
+                <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 text-gray-400 hover:text-white"
+                onClick={() => startEditing(variable.id, variable.value)}
+                >
+                <Edit className="h-4 w-4" />
+                </Button>
+
+                {/* Editing Widget */}
+                {editingId === variable.id ? (
+                <div className="flex items-center w-full">
+                  <Input
+                  value={tempValue}
+                  onChange={(e) => setTempValue(e.target.value)}
+                  className="bg-[#3d3d52] border-[#4d4d62] text-white h-8"
+                  autoFocus
+                  />
+                  <div className="absolute top-2 right-2 flex space-x-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-green-400 hover:text-green-300 hover:bg-[#3d3d52]"
+                    onClick={saveEdit}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-400 hover:text-red-300 hover:bg-[#3d3d52]"
+                    onClick={cancelEdit}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  </div>
+                </div>
+                ) : (
+                // Display Static Variable After Editing
+                <div className="flex items-center w-full">
+                  <div className="bg-[#3d3d52] p-2 rounded-md mr-3">{variable.icon}</div>
+                  <div className="flex flex-col">
+                  <div className="text-sm text-gray-400">{variable.label}</div>
+                  {variable.sublabel && <div className="text-sm text-gray-400">{variable.sublabel}</div>}
+                  <div className="text-2xl font-bold mt-1">
+                    {variable.unit && variable.unit !== "$"
+                    ? `${variable.value} ${variable.unit}`
+                    : variable.unit === "$"
+                      ? `${variable.unit}${variable.value}`
+                      : variable.value}
+                  </div>
+                  </div>
+                </div>
+                )}
+              </Card>
+              ))}
+            </div>
+            <div className="mt-4 ">
+              <Button
+                variant="outline"
+                className="bg-[#4ecca3] border-[#3d3d52] text-white"
+                onClick={generateReport}
+                disabled={isLoadingCharts}
+                >
+                  Generate Report
+                </Button>
+            </div>
           </div>
         </section>
 
@@ -619,25 +795,25 @@ export default function Dashboard() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#2d2d42] text-white border-[#3d3d52]">
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeLoad("Next 1 Month")}>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setTimeRangeLoad("Next 1 Month"); setFilterDaysLoad(30)}}>
                     Next 1 Month
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeLoad("Next 3 Months")}>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setTimeRangeLoad("Next 3 Months"); setFilterDaysLoad(90)}}>
                     Next 3 Months
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeLoad("Next 6 Months")}>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setTimeRangeLoad("Next 6 Months"); setFilterDaysLoad(180)}}>
                     Next 6 Months
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeLoad("Next 1 Year")}>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setTimeRangeLoad("Next 1 Year"); setFilterDaysLoad(365)}}>
                     Next 1 Year
-                  </DropdownMenuItem>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
           {/* Graphs for Bins Load */}
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
-            <div className="relative h-64">
+            <div className="relative h-64" key={reload ? "reload-true" : "reload-false"}>
               {isLoadingCharts ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>
@@ -692,7 +868,7 @@ export default function Dashboard() {
             </div>
           </div>
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
-            <div className="relative h-64">
+            <div className="relative h-64" key={reload? "reload-true" : "reload-false"}>
               {isLoadingCharts ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>
@@ -739,7 +915,7 @@ export default function Dashboard() {
             </div>
           </div>
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
-            <div className="relative h-64">
+            <div className="relative h-64" key={reload ? "reload-true" : "reload-false"}>
               {isLoadingCharts ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>

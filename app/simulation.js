@@ -1,4 +1,4 @@
-const fs = require('fs');
+// const fs = require('fs');
 // Helper Functions
 function getNormalDistributionValue(mean, std_dev) {
     let u = 0, v = 0;
@@ -206,26 +206,60 @@ function completeSimulation(state,combinedInputFormat,cut_time, return_sample_in
     }
 }
 
+function getRecommendations(finalState, binsOverfilled) {
+    // If cost> 3000 then it is over the threshold
+    let recommendations = "";
+    const thresholdCost = 3000;
+    if (finalState.NumberOfAdhocClearingsGarbage > 30) {
+        recommendations += "Adhoc Garbage Clearings are too high>30. Consider increasing the number of bins.\n";
+    }
+    if (finalState.NumberofAdhocClearingsRecyclable > 30) {
+        recommendations += "Adhoc Recyclable Clearings are too high>30. Consider increasing the number of bins.\n";
+    }
+
+    // Group by days in intervals of 7 days
+    const dictDaysOverfilled = {}
+    for (let i = 0; i < binsOverfilled.length; i++) {
+        const date = binsOverfilled[i].date;
+        const day = parseInt(date.split(" ")[1]) % 7 + 1; 
+        if (!dictDaysOverfilled[day]) {
+            dictDaysOverfilled[day] = { general: 0, recyclable: 0 };
+        }
+        dictDaysOverfilled[day].general += binsOverfilled[i].general;
+    }
+
+    // get top 2 days for bins overfilled
+    const topDays = Object.entries(dictDaysOverfilled).sort((a, b) => {
+        return (b[1].general + b[1].recyclable) - (a[1].general + a[1].recyclable);
+    }).slice(0, 2);
+
+    for (let i = 0; i < topDays.length; i++) {
+        const day = topDays[i][0];
+        const general = topDays[i][1].general;
+        if (general > 10) {
+            recommendations += `Consider adding more bin collections on Day ${day} as the number of overfills is ${general} times.\n`;
+        }
+    }
+    if (recommendations === "") {
+        recommendations = "No recommendations needed. The set up is working well.\n";
+    }
+    return recommendations;
+}
+
 
 function processStateListToOutputDict(stateList,cutTime){
     // Process the state list to get the output format
-    outputDict = {
+    const outputDict = {
         "binsLoad": [],
         "binsOverfilled": [],
         "adhocTrips": [],
         "statistics": {}
     }
-    // Baseline statistics
-    outputDict.statistics = {
-        "averageMonthlyCost": computeFinalCost(stateList[stateList.length - 1]),
-        "monthlyAdhocCost": computeMonthlyAdhocCost(stateList[stateList.length - 1]),
-        "monthsElapsed": cutTime/24/30,
-        "recommendations": "No issues with overfilled bins"
-    }
+    
 
-    binsLoad = []
-    binsOverfilled = []
-    adhocTrips = []
+    const binsLoad = []
+    const binsOverfilled = []
+    const adhocTrips = []
 
 
     for (let i = 0; i < stateList.length; i++) {
@@ -274,42 +308,18 @@ function processStateListToOutputDict(stateList,cutTime){
     outputDict.binsLoad = binsLoad;
     outputDict.binsOverfilled = binsOverfilled;
     outputDict.adhocTrips = adhocTrips;
+
+    // Baseline statistics
+    outputDict.statistics = {
+        "averageMonthlyCost": computeFinalCost(stateList[stateList.length - 1]),
+        "monthlyAdhocCost": computeMonthlyAdhocCost(stateList[stateList.length - 1]),
+        "monthsElapsed": cutTime/24/30,
+        "recommendations": getRecommendations(stateList[stateList.length - 1], binsOverfilled),
+    }
+
     return outputDict
 }
 
-
-
-
-// const outputFormat = {
-//     "binsLoad": [
-//       { "date": "Mar 22", "general": 2, "recyclable": 1 },
-//       { "date": "Mar 29", "general": 3, "recyclable": 2 },
-//       { "date": "Apr 5", "general": 2, "recyclable": 3 },
-//       { "date": "Apr 12", "general": 3, "recyclable": 2 },
-//       { "date": "Apr 19", "general": 4, "recyclable": 3 }
-//     ],
-//     "binsOverfilled": [
-//       { "date": "Mar 22", "general": null, "recyclable": null },
-//       { "date": "Mar 29", "general": 1, "recyclable": null },
-//       { "date": "Apr 5", "general": 1, "recyclable": 1 },
-//       { "date": "Apr 12", "general": 2, "recyclable": null },
-//       { "date": "Apr 19", "general": null, "recyclable": 1 }
-//     ],
-//     "adhocTrips": [
-//       { "date": "Mar 22", "value": 0 },
-//       { "date": "Mar 29", "value": 1 },
-//       { "date": "Apr 5", "value": 0 },
-//       { "date": "Apr 12", "value": 1 },
-//       { "date": "Apr 19", "value": 1 }
-//     ],
-
-//     "statistics": {
-//       "averageMonthlyCost": 2000,
-//       "monthlyAdhocCost": 600,
-//       "monthsElapsed": 20,
-//       "recommendations": "No issues with overfilled bins"
-//     }
-// }
 
 
 
@@ -338,7 +348,7 @@ function generateResult(combinedInputFormat, logging = false) {
     const reportingInterval = 24;
     // Input Format for the simulation
     const oriState = generateOriginalCompanyStats(initState, combinedInputFormat);
-    const returnStateList = completeSimulation(oriState, combinedInputFormat, cutTime, return_sample_intervals = reportingInterval);
+    const returnStateList = completeSimulation(oriState, combinedInputFormat, cutTime, reportingInterval);
     const finalOutput = processStateListToOutputDict(returnStateList,cutTime);
 
     if (logging) {
@@ -386,6 +396,6 @@ const combinedInputFormat = {
         "garbageTimesClearedPerDay": 2 // 1 or 2 only
     }    
 }
+exports.generateResult = generateResult;
 
-
-console.log(generateResult(combinedInputFormat, true));
+// console.log(generateResult(combinedInputFormat, true));
