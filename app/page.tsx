@@ -55,22 +55,26 @@ interface OutputVariable {
 }
 
 export default function Dashboard() {
-  const [timeRangeOverfilled, setTimeRangeOverfilled] = useState("Last 1 Year")
-  const [timeRangeAdhoc, setTimeRangeAdhoc] = useState("Next 1 Month")
-  const [timeRangeLoad, setTimeRangeLoad] = useState("Next 1 Month")
+
 
   // State to track which card is being edited
   const [editingId, setEditingId] = useState<string | null>(null)
 
   // State for chart data
-  const [binsLoadData, setBinsLoadData] = useState<DataPoint[]>([])
-  const [binsOverfilledData, setBinsOverfilledData] = useState<ScatterDataPoint[]>([])
-  const [adhocTripsData, setAdhocTripsData] = useState<BarDataPoint[]>([])
   const [isLoadingCharts, setIsLoadingCharts] = useState(true)
-  const [filterDaysOverfilled, setFilterDaysOverfilled] = useState(30)
-  const [filterDaysAdhoc, setFilterDaysAdhoc] = useState(30)
-  const [filterDaysLoad, setFilterDaysLoad] = useState(30)
   const [reload, setReload] = useState(false)
+  const [timeRangeLoad, setTimeRangeLoad] = useState<string | null>("Next 1 Month");
+  const [filterDaysLoad, setFilterDaysLoad] = useState<number | null>(null);
+  const [binsLoadData, setBinsLoadData] = useState<any[]>([]);
+  const [isLoadingLoadChart, setIsLoadingLoadChart] = useState(false); // Loading for Load Chart
+  const [timeRangeOverfilled, setTimeRangeOverfilled] = useState<string | null>("Next 1 Month");
+  const [filterDaysOverfilled, setFilterDaysOverfilled] = useState<number | null>(null);
+  const [binsOverfilledData, setBinsOverfilledData] = useState<any[]>([]);
+  const [isLoadingOverfilledChart, setIsLoadingOverfilledChart] = useState(false); // Loading for Overfilled Chart
+  const [timeRangeAdhoc, setTimeRangeAdhoc] = useState<string | null>("Next 1 Month");
+  const [filterDaysAdhoc, setFilterDaysAdhoc] = useState<number | null>(null);
+  const [adhocTripsData, setAdhocTripsData] = useState<any[]>([]);
+  const [isLoadingAdhocChart, setIsLoadingAdhocChart] = useState(false); // Loading for Adhoc Chart
   const [combinedInputValues, setCombinedInputValues] = useState<CombinedInputFormat>({
     foodOps: {
       dailyLoadGeneral: 0,
@@ -112,7 +116,7 @@ export default function Dashboard() {
       id: "dailyLoadGeneralFoodOps",
       label: "Food Ops Daily Approx Load",
       sublabel: "(General)",
-      value: "500",
+      value: "620",
       unit: "L",
       icon: (
         <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -144,7 +148,7 @@ export default function Dashboard() {
       id: "dailyLoadGeneralRegular",
       label: "Regular Daily Approx Load",
       sublabel: "(General)",
-      value: "500",
+      value: "400",
       unit: "L",
       icon: (
         <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -176,7 +180,7 @@ export default function Dashboard() {
       id: "dailyLoadGeneralOthers",
       label: "Others Daily Approx Load",
       sublabel: "(General)",
-      value: "300",
+      value: "1000",
       unit: "L",
       icon: (
         <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -307,19 +311,18 @@ export default function Dashboard() {
 
   // Function to load chart data
   const loadChartData = async (chartdata:any) => {
-    setIsLoadingCharts(true)
-    console.log(filterDaysAdhoc, filterDaysLoad, filterDaysOverfilled)
-
     try {
+      // We dont filter
       const filter: ChartDataFilter = {
-        days: filterDaysLoad,
+        days: 365
       }
 
       const data = await ChartDataService.fetchChartData(filter, chartdata)
 
-      setBinsLoadData(data.binsLoad)
-      setBinsOverfilledData(data.binsOverfilled)
-      setAdhocTripsData(data.adhocTrips)
+      console.log(data.binsLoad.length, data.binsOverfilled.length, data.adhocTrips.length)
+      setBinsLoadData([...data.binsLoad])
+      setBinsOverfilledData([...data.binsOverfilled])
+      setAdhocTripsData([...data.adhocTrips])
       setStatistics(data.statistics)
       setReload(!reload)
     } catch (error) {
@@ -332,8 +335,8 @@ export default function Dashboard() {
 
   // Load chart data when timeRange or selectedCategory changes
   useEffect(() => {
-    loadChartData(outputState);
-    }, [timeRangeAdhoc,timeRangeLoad,timeRangeOverfilled])
+    
+    }, [])
 
   function generateReport() {
     // Grabs values for input variables from component dicts
@@ -388,6 +391,143 @@ export default function Dashboard() {
   useEffect(() => {
     loadChartData(outputState)
   }, [filterDaysAdhoc,filterDaysLoad,filterDaysOverfilled])
+
+  function setDurationBinLoad(inputLoad: string) {
+    setIsLoadingLoadChart(true);
+    if (inputLoad === "Next 1 Month") {
+      setTimeRangeLoad("Next 1 Month");
+      setFilterDaysLoad(30);
+      setTimeout(() => {
+        setBinsLoadData(outputState.binsLoad.slice(0, 30));
+        setIsLoadingLoadChart(false);
+      }, 0);
+    } else if (inputLoad === "Next 3 Months") {
+      setTimeRangeLoad("Next 3 Months");
+      setFilterDaysLoad(90);
+      setTimeout(() => {
+        setBinsLoadData(outputState.binsLoad.slice(0, 90));
+        setIsLoadingLoadChart(false);
+      }, 0);
+    } else if (inputLoad === "Next 6 Months") {
+      setTimeRangeLoad("Next 6 Months");
+      setFilterDaysLoad(180);
+      setTimeout(() => {
+        setBinsLoadData(outputState.binsLoad.slice(0, 180));
+        setIsLoadingLoadChart(false);
+      }, 0);
+    } else if (inputLoad === "Next 1 Year") {
+      setTimeRangeLoad("Next 1 Year");
+      setFilterDaysLoad(365);
+      setTimeout(() => {
+        setBinsLoadData(outputState.binsLoad.slice(0, 365));
+        setIsLoadingLoadChart(false);
+      }, 0);
+    }
+  }
+
+  function setDurationBinOverfilled(inputOverfilled: string) {
+    setIsLoadingOverfilledChart(true);
+    if (inputOverfilled === "Next 1 Month") {
+      setTimeRangeOverfilled("Next 1 Month");
+      setFilterDaysOverfilled(30);
+      setTimeout(() => {
+        setBinsOverfilledData(outputState.binsOverfilled.slice(0, 30));
+        setIsLoadingOverfilledChart(false);
+      }, 0);
+    } else if (inputOverfilled === "Next 3 Months") {
+      setTimeRangeOverfilled("Next 3 Months");
+      setFilterDaysOverfilled(90);
+      setTimeout(() => {
+        setBinsOverfilledData(outputState.binsOverfilled.slice(0, 90));
+        setIsLoadingOverfilledChart(false);
+      }, 0);
+    } else if (inputOverfilled === "Next 6 Months") {
+      setTimeRangeOverfilled("Next 6 Months");
+      setFilterDaysOverfilled(180);
+      setTimeout(() => {
+        setBinsOverfilledData(outputState.binsOverfilled.slice(0, 180));
+        setIsLoadingOverfilledChart(false);
+      }, 0);
+    } else if (inputOverfilled === "Next 1 Year") {
+      setTimeRangeOverfilled("Next 1 Year");
+      setFilterDaysOverfilled(365);
+      setTimeout(() => {
+        setBinsOverfilledData(outputState.binsOverfilled.slice(0, 365));
+        setIsLoadingOverfilledChart(false);
+      }, 0);
+    }
+  }
+  function setDurationAdhocClearance(inputAdhoc: string) {
+    setIsLoadingAdhocChart(true);
+    if (inputAdhoc === "Next 1 Month") {
+      setTimeRangeAdhoc("Next 1 Month");
+      setFilterDaysAdhoc(30);
+      setTimeout(() => {
+        setAdhocTripsData(formatAdhocClearanceDataByDay(outputState.adhocTrips.slice(0, 30)));
+        setIsLoadingAdhocChart(false);
+      }, 0);
+    } else if (inputAdhoc === "Next 3 Months") {
+      setTimeRangeAdhoc("Next 3 Months");
+      setFilterDaysAdhoc(90);
+      setTimeout(() => {
+        setAdhocTripsData(formatAdhocClearanceDataByDay(outputState.adhocTrips.slice(0, 90)));
+        setIsLoadingAdhocChart(false);
+      }, 0);
+    } else if (inputAdhoc === "Next 6 Months") {
+      setTimeRangeAdhoc("Next 6 Months");
+      setFilterDaysAdhoc(180);
+      setTimeout(() => {
+        setAdhocTripsData(formatAdhocClearanceDataByDay(outputState.adhocTrips.slice(0, 180)));
+        setIsLoadingAdhocChart(false);
+      }, 0);
+    } else if (inputAdhoc === "Next 1 Year") {
+      setTimeRangeAdhoc("Next 1 Year");
+      setFilterDaysAdhoc(365);
+      setTimeout(() => {
+        setAdhocTripsData(formatAdhocClearanceDataByDay(outputState.adhocTrips.slice(0, 365)));
+        setIsLoadingAdhocChart(false);
+      }, 0);
+    }
+  }
+  function formatOverfilledDataByDay(overfilledData:any) {
+    // Group by days in intervals of 7 days
+    const dictDaysOverfilled: Record<number, number> = {}
+
+    for (let i = 0; i < overfilledData.length; i++) {
+        const date = overfilledData[i].date;
+        const day = parseInt(date.split(" ")[1]) % 7 + 1; 
+        if (!dictDaysOverfilled[day]) {
+            dictDaysOverfilled[day] = 0
+          }
+        dictDaysOverfilled[day] += overfilledData[i].value
+    }
+    const output = Object.entries(dictDaysOverfilled).map(([day, value]) => ({
+        date: `Day ${day}`,
+        value: value,
+    }))
+    console.log(output)
+    return output
+  }
+
+  function formatAdhocClearanceDataByDay(adhocData:any) {
+    // Group by days in intervals of 7 days
+    const dictDaysOverfilled: Record<number, number> = {}
+
+    for (let i = 0; i < adhocData.length; i++) {
+        const date = adhocData[i].date;
+        const day = parseInt(date.split(" ")[1]) % 7 + 1; 
+        if (!dictDaysOverfilled[day]) {
+            dictDaysOverfilled[day] = 0
+          }
+        dictDaysOverfilled[day] += adhocData[i].value
+    }
+    const output = Object.entries(dictDaysOverfilled).map(([day, value]) => ({
+        date: `Day ${day}`,
+        value: value,
+    }))
+    console.log(output)
+    return output
+  }
 
   return (
     <div className="flex h-screen bg-[#1a1a2e] overflow-hidden">
@@ -548,6 +688,7 @@ export default function Dashboard() {
           {/* Scrollable Input Variables */}
           <div className="relative">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              
               {inputVariablesComponentControl.map((variable) => (
               <Card
                 key={variable.id}
@@ -802,16 +943,16 @@ export default function Dashboard() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#2d2d42] text-white border-[#3d3d52]">
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setTimeRangeLoad("Next 1 Month"); setFilterDaysLoad(30)}}>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('Next 1 Month')}}>
                     Next 1 Month
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setTimeRangeLoad("Next 3 Months"); setFilterDaysLoad(90)}}>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('Next 3 Months')}}>
                     Next 3 Months
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setTimeRangeLoad("Next 6 Months"); setFilterDaysLoad(180)}}>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('Next 6 Months')}}>
                     Next 6 Months
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setTimeRangeLoad("Next 1 Year"); setFilterDaysLoad(365)}}>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('Next 1 Year')}}>
                     Next 1 Year
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -820,8 +961,8 @@ export default function Dashboard() {
           </div>
           {/* Graphs for Bins Load */}
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
-            <div className="relative h-64" key={reload ? "reload-true" : "reload-false"}>
-              {isLoadingCharts ? (
+            <div className="relative h-64" >
+              {isLoadingLoadChart ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>
                 </div>
@@ -858,16 +999,16 @@ export default function Dashboard() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#2d2d42] text-white border-[#3d3d52]">
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeOverfilled("Next 1 Month")}>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setDurationBinOverfilled("Next 1 Month")}>
                     Next 1 Month
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeOverfilled("Next 3 Months")}>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setDurationBinOverfilled("Next 3 Months")}>
                     Next 3 Months
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeOverfilled("Next 6 Months")}>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setDurationBinOverfilled("Next 6 Months")}>
                     Next 6 Months
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeOverfilled("Next 1 Year")}>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setDurationBinOverfilled("Next 1 Year")}>
                     Next 1 Year
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -875,8 +1016,8 @@ export default function Dashboard() {
             </div>
           </div>
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
-            <div className="relative h-64" key={reload? "reload-true" : "reload-false"}>
-              {isLoadingCharts ? (
+            <div className="relative h-64">
+              {isLoadingOverfilledChart ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>
                 </div>
@@ -905,16 +1046,16 @@ export default function Dashboard() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#2d2d42] text-white border-[#3d3d52]">
-                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeAdhoc("Next 1 Month")}>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setDurationAdhocClearance("Next 1 Month")}>
                       Next 1 Month
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeAdhoc("Next 3 Months")}>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setDurationAdhocClearance("Next 3 Months")}>
                       Next 3 Months
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeAdhoc("Next 6 Months")}>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setDurationAdhocClearance("Next 6 Months")}>
                       Next 6 Months
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setTimeRangeAdhoc("Next 1 Year")}>
+                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => setDurationAdhocClearance("Next 1 Year")}>
                       Next 1 Year
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -922,8 +1063,8 @@ export default function Dashboard() {
             </div>
           </div>
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
-            <div className="relative h-64" key={reload ? "reload-true" : "reload-false"}>
-              {isLoadingCharts ? (
+            <div className="relative h-64">
+              {isLoadingAdhocChart ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>
                 </div>

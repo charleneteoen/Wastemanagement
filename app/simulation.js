@@ -27,11 +27,11 @@ function generateOriginalCompanyStats(state, combinedInputFormat) {
 function computeFinalCost(state) {
     // Compute the final cost based on the state
     const total_cost =
-        state.RegularCostGarbage +
-        state.RegularCostRecyclable +
-        state.TotalCostAdhocGarbage +
-        state.TotalCostAdhocRecyclable;
-    return total_cost / 12;
+        (state.RegularCostGarbage +
+        state.RegularCostRecyclable)/13 +
+        (state.TotalCostAdhocGarbage +
+        state.TotalCostAdhocRecyclable)/12
+    return total_cost;
 }
 
 function computeMonthlyAdhocCost(state) {
@@ -85,7 +85,7 @@ function runOneIter(state, combinedInputFormat, sim_time, interThrowCounter) {
 
     // Independent Steps
     // Step 1c Every month add regular cost for bins to total cost
-    if (sim_time % (30 * 24) === 0) {
+    if ((sim_time + 1) % (30 * 24) === 0) {
         state.RegularCostGarbage += combinedInputFormat.companySetting.regularBinCostMonthlyPerBin * combinedInputFormat.companySetting.generalBins;
         state.RegularCostRecyclable += combinedInputFormat.companySetting.recyclableBinCostMonthlyPerBin * combinedInputFormat.companySetting.recyclableBins;
     }
@@ -379,30 +379,29 @@ function generateResult(combinedInputFormat, logging = false) {
 
     return finalOutput;
 }
-
-const combinedInputFormat = {
-    "foodOps": {
-        "dailyLoadGeneral": 620,
-        "dailyLoadRecycled": 20,
-    },
-    "office": {
-        "dailyLoadGeneral": 400,
-        "dailyLoadRecycled": 20,
-
-    },
-    "others": {
-        "dailyLoadGeneral": 1000,
-        "dailyLoadRecycled": 20,
-    },
-    "companySetting" :{
-        "costAdhoc": 100,
+const combinedInputFormat={
+    "companySetting": {
         "regularBinCostMonthlyPerBin": 500,
         "recyclableBinCostMonthlyPerBin": 200,
+        "costAdhoc": 100,
         "generalBins": 3,
         "recyclableBins": 1,
-        "garbageTimesClearedPerDay": 2 // 1 or 2 only
-    }    
+        "garbageTimesClearedPerDay": 2
+    },
+    "foodOps": {
+        "dailyLoadGeneral": 1000,
+        "dailyLoadRecycled": 500
+    },
+    "office": {
+        "dailyLoadGeneral": 800,
+        "dailyLoadRecycled": 300
+    },
+    "others": {
+        "dailyLoadGeneral": 600,
+        "dailyLoadRecycled": 200
+    }
 }
+
 exports.generateResult = generateResult;
 
 // console.log(generateResult(combinedInputFormat, true));
