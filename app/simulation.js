@@ -1,18 +1,17 @@
 // const fs = require('fs');
 // Helper Functions
-import seedrandom from 'seedrandom';
-let rng = seedrandom('default-seed'); // Set a default seed
+// import seedrandom from 'seedrandom';
+// let rng = seedrandom('default-seed'); // Set a default seed
 
-function setSeed(seed) {
-    rng = seedrandom(seed);
-}
+// function setSeed(seed) {
+//     rng = seedrandom(seed);
+// }
 
 
 function getNormalDistributionValue(mean, std_dev) {
-    setSeed('default-seed'); // Reset the seed to default for each call
-    let u = 0, v = 0;
-    while(u === 0) u = rng(); // Use seeded random generator
-    while(v === 0) v = rng();
+    // setSeed('default-seed'); // Reset the seed to default for each call
+    let u = Math.random();
+    let v = Math.random();
     let standardNormal = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
     return Math.max(0, Math.floor(mean + standardNormal * std_dev));
 }
@@ -155,7 +154,6 @@ function runOneIter(state, combinedInputFormat, sim_time, interThrowCounter) {
     if (state.CurrentTotalVolumeGarbage >= maxGarbageVol) {
         if (state.GarbageAdhocTriggerDelay === 0) {
             // Adhoc clearing for garbage
-            console.log("Adhoc Garbage Clearing Triggered")
             // 3 hours delay for adhoc clearing
             state.GarbageAdhocTriggerDelay  = 3 ;
         }

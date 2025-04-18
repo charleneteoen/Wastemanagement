@@ -369,6 +369,7 @@ export default function Dashboard() {
         garbageTimesClearedPerDay: timesClearedPerDay as 1 | 2,
       },
     }
+    console.log(combinedInputsLocal)
     setCombinedInputValues(combinedInputsLocal);
     const result: OutputVariable = {
       ...generateResult(combinedInputsLocal),
