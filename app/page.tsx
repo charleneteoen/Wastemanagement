@@ -991,7 +991,7 @@ export default function Dashboard() {
 
         <section className="mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">No. of overfilled bins</h2>
+            <h2 className="text-xl font-semibold text-white">No. of Overfilled Bins</h2>
             <div className="flex items-center space-x-4">
               <div className="flex items-center">
                   <div className="w-3 h-3 rounded-full bg-[#4ecca3] mr-2"></div>
@@ -1046,7 +1046,7 @@ export default function Dashboard() {
 
         <section>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">No. of adhoc Trips</h2>
+            <h2 className="text-xl font-semibold text-white">No. of Ad Hoc Trips</h2>
             <div className="flex items-center space-x-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
