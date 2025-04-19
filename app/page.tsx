@@ -900,7 +900,16 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm">Recommendations</span>
               </div>
-              <p className="text-sm text-gray-300">{outputState.statistics.recommendations}</p>
+              <ul className="text-sm text-gray-300 px-4" style={{ listStyleType: 'disc' }}>
+                {outputState.statistics.recommendations && outputState.statistics.recommendations
+                  .split('\n')
+                  .filter(item => item.trim() !== '')
+                  .map((recommendation, index) => (
+                    <li key={index}>
+                      {recommendation.startsWith('* ') ? recommendation.substring(2) : recommendation}
+                    </li>
+                  ))}
+              </ul>
             </Card>
           </div>
           <div className="mb-8">

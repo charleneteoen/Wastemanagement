@@ -218,10 +218,11 @@ function getRecommendations(finalState, binsOverfilled) {
     let recommendations = "";
     const thresholdCost = 3000;
     if (finalState.NumberOfAdhocClearingsGarbage > 30) {
-        recommendations += "Adhoc Garbage Clearings are too high>30. Consider increasing the number of bins.\n";
+        // Add recommendation for excessive adhoc garbage clearings
+        recommendations += "* Adhoc Garbage Clearings > 30. Increase Garbage bins.\n";
     }
     if (finalState.NumberofAdhocClearingsRecyclable > 30) {
-        recommendations += "Adhoc Recyclable Clearings are too high>30. Consider increasing the number of bins.\n";
+        recommendations += "* Adhoc Recyclable Clearings > 30 Increase Recyclable bins.\n";
     }
 
     // Group by days in intervals of 7 days
@@ -244,11 +245,11 @@ function getRecommendations(finalState, binsOverfilled) {
         const day = topDays[i][0];
         const general = topDays[i][1].general;
         if (general > 10) {
-            recommendations += `Consider adding more bin collections on Day ${day} as the number of overfills is ${general} times.\n`;
+            recommendations += `* Add bins on Day ${day} as ${general} overfills.\n`;
         }
     }
     if (recommendations === "") {
-        recommendations = "No recommendations needed. The set up is working well.\n";
+        recommendations = "No recommendations.\n";
     }
     return recommendations;
 }
