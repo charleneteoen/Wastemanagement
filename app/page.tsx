@@ -63,7 +63,7 @@ export default function Dashboard() {
   // State for chart data
   const [isLoadingCharts, setIsLoadingCharts] = useState(true)
   const [reload, setReload] = useState(false)
-  const [timeRangeLoad, setTimeRangeLoad] = useState<string | null>("Next 1 Month");
+  const [timeRangeLoad, setTimeRangeLoad] = useState<string | null>("Whole Year");
   const [filterDaysLoad, setFilterDaysLoad] = useState<number | null>(null);
   const [binsLoadData, setBinsLoadData] = useState<any[]>([]);
   const [isLoadingLoadChart, setIsLoadingLoadChart] = useState(false); // Loading for Load Chart
@@ -333,10 +333,6 @@ export default function Dashboard() {
     }
   }
 
-  // Load chart data when timeRange or selectedCategory changes
-  useEffect(() => {
-    
-    }, [])
 
   function generateReport() {
     // Grabs values for input variables from component dicts
@@ -392,38 +388,6 @@ export default function Dashboard() {
     loadChartData(outputState)
   }, [filterDaysAdhoc,filterDaysLoad,filterDaysOverfilled])
 
-  function setDurationBinLoad(inputLoad: string) {
-    setIsLoadingLoadChart(true);
-    if (inputLoad === "Next 1 Month") {
-      setTimeRangeLoad("Next 1 Month");
-      setFilterDaysLoad(30);
-      setTimeout(() => {
-        setBinsLoadData(outputState.binsLoad.slice(0, 30));
-        setIsLoadingLoadChart(false);
-      }, 0);
-    } else if (inputLoad === "Next 3 Months") {
-      setTimeRangeLoad("Next 3 Months");
-      setFilterDaysLoad(90);
-      setTimeout(() => {
-        setBinsLoadData(outputState.binsLoad.slice(0, 90));
-        setIsLoadingLoadChart(false);
-      }, 0);
-    } else if (inputLoad === "Next 6 Months") {
-      setTimeRangeLoad("Next 6 Months");
-      setFilterDaysLoad(180);
-      setTimeout(() => {
-        setBinsLoadData(outputState.binsLoad.slice(0, 180));
-        setIsLoadingLoadChart(false);
-      }, 0);
-    } else if (inputLoad === "Next 1 Year") {
-      setTimeRangeLoad("Next 1 Year");
-      setFilterDaysLoad(365);
-      setTimeout(() => {
-        setBinsLoadData(outputState.binsLoad.slice(0, 365));
-        setIsLoadingLoadChart(false);
-      }, 0);
-    }
-  }
 
   function setDurationBinOverfilled(inputOverfilled: string) {
     setIsLoadingOverfilledChart(true);
@@ -489,26 +453,6 @@ export default function Dashboard() {
       }, 0);
     }
   }
-  function formatOverfilledDataByDay(overfilledData:any) {
-    // Group by days in intervals of 7 days
-    const dictDaysOverfilled: Record<number, number> = {}
-
-    for (let i = 0; i < overfilledData.length; i++) {
-        const date = overfilledData[i].date;
-        const day = parseInt(date.split(" ")[1]) % 7 + 1; 
-        if (!dictDaysOverfilled[day]) {
-            dictDaysOverfilled[day] = 0
-          }
-        dictDaysOverfilled[day] += overfilledData[i].value
-    }
-    const output = Object.entries(dictDaysOverfilled).map(([day, value]) => ({
-        date: `Day ${day}`,
-        value: value,
-    }))
-    console.log(output)
-    return output
-  }
-
   function formatAdhocClearanceDataByDay(adhocData:any) {
     // Group by days in intervals of 7 days
     const dictDaysOverfilled: Record<number, number> = {}
@@ -528,6 +472,44 @@ export default function Dashboard() {
     }));
     console.log(output)
     return output
+  }
+
+  function setDurationBinLoad(inputLoad: string) {
+    setIsLoadingLoadChart(true);
+    const monthsOfYear = {
+      January: { start: 1, end: 31 },
+      February: { start: 32, end: 59 },
+      March: { start: 60, end: 90 },
+      April: { start: 91, end: 120 },
+      May: { start: 121, end: 151 },
+      June: { start: 152, end: 181 },
+      July: { start: 182, end: 212 },
+      August: { start: 213, end: 243 },
+      September: { start: 244, end: 273 },
+      October: { start: 274, end: 304 },
+      November: { start: 305, end: 334 },
+      December: { start: 335, end: 365 },
+    };
+    if (inputLoad in monthsOfYear) {
+      setTimeRangeLoad(inputLoad);
+      setTimeout(() => {
+        const monthData = monthsOfYear[inputLoad as keyof typeof monthsOfYear];
+        if (monthData) {
+          const filteredData = outputState.binsLoad.slice(monthData.start - 1, monthData.end);
+          const reindexedData = filteredData.map((item, index) => ({
+            ...(typeof item === 'object' && item !== null ? item : {}),
+            date: `${index + 1}`, // Reindex dates starting from 1
+          }));
+          setBinsLoadData(reindexedData);
+        } else {
+          console.error("Invalid month input:", inputLoad);
+        }
+        setIsLoadingLoadChart(false);
+      }, 0);
+    } else {
+      console.error("Invalid month input:", inputLoad);
+      setIsLoadingLoadChart(false);
+    }
   }
 
   return (
@@ -929,7 +911,7 @@ export default function Dashboard() {
         <section className="mb-8">
           {/* Graph Section */}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Load of Bins</h2>
+            <h2 className="text-xl font-semibold text-white" >Load of Bins</h2>
             <div className="flex items-center space-x-4">
               <div className="flex items-center">
                 <div className="w-3 h-3 rounded-full bg-[#4ecca3] mr-2"></div>
@@ -939,28 +921,52 @@ export default function Dashboard() {
                 <div className="w-3 h-3 rounded-full bg-[#eeff41] mr-2"></div>
                 <span className="text-sm text-gray-300">Recyclable</span>
               </div>
-              <DropdownMenu>
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="bg-[#2d2d42] border-[#3d3d52] text-white">
-                    {timeRangeLoad}
-                    <ChevronDown className="ml-2 h-4 w-4" />
+                  {timeRangeLoad}
+                  <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#2d2d42] text-white border-[#3d3d52]">
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('Next 1 Month')}}>
-                    Next 1 Month
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('Next 3 Months')}}>
-                    Next 3 Months
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('Next 6 Months')}}>
-                    Next 6 Months
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('Next 1 Year')}}>
-                    Next 1 Year
-                    </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('January')}}>
+                  January
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('February')}}>
+                  February
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('March')}}>
+                  March
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('April')}}>
+                  April
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('May')}}>
+                  May
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('June')}}>
+                  June
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('July')}}>
+                  July
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('August')}}>
+                  August
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('September')}}>
+                  September
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('October')}}>
+                  October
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('November')}}>
+                  November
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-[#3d3d52]" onClick={() => {setDurationBinLoad('December')}}>
+                  December
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+                </DropdownMenu>
             </div>
           </div>
           {/* Graphs for Bins Load */}
