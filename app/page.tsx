@@ -981,19 +981,19 @@ export default function Dashboard() {
           {/* Graphs for Bins Load */}
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
             <div className="relative h-64" >
-              {isLoadingLoadChart ? (
+                {isLoadingLoadChart ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>
                 </div>
-              ) : (
+                ) : (
                 <AreaChart
                   data={binsLoadData}
                   generalColor="#4ecca3"
                   recyclableColor="#eeff41"
                   yAxisLabel="Number of Bins"
-                  yAxisMax={4}
+                  yAxisMax={binsLoadData.length > 0 ? Math.ceil(Math.max(...binsLoadData.map((item) => item.general))) + 1 : 1}
                 />
-              )}
+                )}
             </div>
           </Card>
         </section>
@@ -1036,19 +1036,23 @@ export default function Dashboard() {
           </div>
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
             <div className="relative h-64">
-              {isLoadingOverfilledChart ? (
+                {isLoadingOverfilledChart ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>
                 </div>
-              ) : (
+                ) : (
                 <ScatterChart
                   data={binsOverfilledData}
                   generalColor="#4ecca3"
                   recyclableColor="#eeff41"
                   yAxisLabel="Number of Bins"
-                  yAxisMax={2}
+                  yAxisMax={
+                  binsOverfilledData.length > 0
+                    ? Math.ceil(Math.max(...binsOverfilledData.map((item) => item.general))) + 1
+                    : 1
+                  }
                 />
-              )}
+                )}
             </div>
           </Card>
         </section>
@@ -1083,13 +1087,22 @@ export default function Dashboard() {
           </div>
           <Card className="bg-[#1a1a2e] border-[#2d2d42] p-4">
             <div className="relative h-64">
-              {isLoadingAdhocChart ? (
+                {isLoadingAdhocChart ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-white">Loading chart data...</div>
                 </div>
-              ) : (
-                <BarChart data={adhocTripsData} barColor="#4ecca3" yAxisLabel="Number of Trips" yAxisMax={1} />
-              )}
+                ) : (
+                <BarChart
+                  data={adhocTripsData}
+                  barColor="#4ecca3"
+                  yAxisLabel="Number of Trips"
+                  yAxisMax={
+                  adhocTripsData.length > 0
+                    ? Math.ceil(Math.max(...adhocTripsData.map((item) => item.value))) + 1
+                    : 1
+                  }
+                />
+                )}
             </div>
           </Card>
         </section>
