@@ -19,7 +19,7 @@ cd Wastemanagement
 ```
 ### 2. Install Dependencies and Start the Development Server
 ```
-npm install --force
+npm install --legacy-peer-deps
 npm run dev
 Visit http://localhost:3000 in your browser to access the dashboard.
 ```
